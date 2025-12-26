@@ -1,4 +1,5 @@
 const Product = require("../../../model/productModel");
+const fs = require("fs");
 
 exports.createProduct = async (req, res) => {
   const file = req.file;
@@ -39,5 +40,134 @@ exports.createProduct = async (req, res) => {
   res.status(201).json({
     message: "Product created successfully",
     data: product,
+  });
+};
+
+//get all products
+
+exports.getProducts = async (req, res) => {
+  const products = await Product.find();
+  if (products.length == 0) {
+    res.status(400).json({
+      message: "No products found",
+      products: [],
+    });
+  } else {
+    res.status(200).json({
+      message: "Produts fetched successfully",
+      products,
+    });
+  }
+};
+
+//get single product
+exports.getProduct = async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({
+      message: "Please provide id",
+    });
+  }
+  const product = await Product.findById(id);
+  if (!product) {
+    return res.status(400).json({
+      message: "No product found with that id",
+    });
+  }
+  res.status(200).json({
+    message: "Product fetch successfully",
+    product,
+  });
+};
+
+//delete product
+exports.deleteProduct = async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({
+      message: "please provide id",
+    });
+  }
+  const oldData = await Product.findById(id);
+  if (!oldData) {
+    return res.status(400).json({
+      message: "No data found with that id",
+    });
+  }
+  const oldProductImage = oldData.productImage;
+
+  fs.unlink("./uploads/" + oldProductImage, (err) => {
+    if (err) {
+      console.log("error deleting file", err);
+    } else {
+      console.log("file deleted successfully");
+    }
+  });
+
+  await Product.findByIdAndDelete(id);
+  res.status(200).json({
+    message: "Product delete successfully",
+  });
+};
+
+exports.editProduct = async (req, res) => {
+  const { id } = req.params;
+
+  const {
+    productName,
+    productDescription,
+    productStockQty,
+    productStatus,
+    productPrice,
+  } = req.body;
+  if (
+    !productName ||
+    !productDescription ||
+    !productStockQty ||
+    !productStatus ||
+    !productPrice ||
+    !id
+  ) {
+    return res.status(400).json({
+      message:
+        "Please provide productName,productDescription,id,productStockQty,productStatus and productPrice",
+    });
+  }
+
+  const oldData = await Product.findById(id);
+  if (!oldData) {
+    return res.status(400).json({
+      message: "No data found with that id",
+    });
+  }
+  const oldProductImage = oldData.productImage;
+
+  if (req.file && req.file.filename) {
+    fs.unlink("./uploads/" + oldProductImage, (err) => {
+      if (err) {
+        console.log("error deleting file", err);
+      } else {
+        console.log("file deleted successfully");
+      }
+    });
+  }
+  const data = await Product.findByIdAndUpdate(
+    id,
+    {
+      productName,
+      productDescription,
+      productStatus,
+      productStockQty,
+      productPrice,
+      productImage:
+        req.file && req.file.filename ? req.file.filename : oldProductImage,
+    },
+    {
+      new: true,
+    }
+  );
+  res.status(200).json({
+    message: "product updated successfully",
+    data,
   });
 };
